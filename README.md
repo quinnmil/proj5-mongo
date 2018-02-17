@@ -35,6 +35,6 @@ You'll turn in your credentials.ini using which we will get the following:
 
 * Dockerfile
 
-* Test cases for the button. No need to run nose.
+* Test cases for the two buttons. No need to run nose.
 
 * docker-compose.yml
