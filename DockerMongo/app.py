@@ -9,7 +9,7 @@ import logging
 app = Flask(__name__)
 
 client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
-db = client.cis322
+db = client.tododb
 
 # From my mongoDB
 # Don't actually have to use. 
@@ -66,9 +66,9 @@ def _calc_times():
     result = {"open": open_time, "close": close_time, "message": message}
     return flask.jsonify(result=result)
 
-@app.route('/')
+@app.route('/result')
 def todo():
-    _items = db.cis322.find()
+    _items = db.tododb.find()
     items = [item for item in _items]
 
     return render_template('todo.html', items=items)
@@ -76,12 +76,12 @@ def todo():
 @app.route('/new', methods=['POST'])
 def new():
     item_doc = {
-        'name': request.form['name'],
-        'description': request.form['description']
+        'open': request.form['open'],
+        'close': request.form['close']
     }
-    db.cis322.insert_one(item_doc)
-
-    return redirect(url_for('todo'))
+    db.tododb.insert_one(item_doc)
+    # redirect to something else. 
+    return redirect(url_for('calc.html'))
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)

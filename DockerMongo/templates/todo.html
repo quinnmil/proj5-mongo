@@ -1,10 +1,10 @@
-<form action="/new" method="POST">
-  <input type="text" name="name"></input>
-  <input type="text" name="description"></input>
+<!-- <form action="/new" method="POST">
+  <input type="text" name="open"></input>
+  <input type="text" name="close"></input>
   <input type="submit"></input>
-</form>
-
+</form> -->
+<h1>Open and Close times</h1>
 {% for item in items %}
-  <h1> {{ item.name }} </h1>
-  <p> {{ item.description }} <p>
+  <p> {{ item.open }} </p>
+  <p> {{ item.close }} <p>
 {% endfor %}
