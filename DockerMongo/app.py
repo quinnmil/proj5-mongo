@@ -1,26 +1,42 @@
 import os
+import sys
 import flask 
 from flask import Flask, redirect, url_for, request, render_template
 from pymongo import MongoClient
 import arrow 
 import acp_times # brevet time calculations
 import logging
+import random
+
+
+
 
 app = Flask(__name__)
+app.secret_key = 'al;sdjf;wiejrtwkf'
 
-client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
-db = client.tododb
+# client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
+# db = client.tododb
 
+# db.tododb.delete_many{}
 # From my mongoDB
 # Don't actually have to use. 
-uri = 'mongodb://<dbuser>:<dbpassword>@ds143738.mlab.com:43738/cis322'
-user = 'quinn'
 
+try:
+    client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
+    db = client.tododb
+    collection = db.control
+
+except:
+    print("failure opening database. is mongo running? correct password?")
+    sys.exit(1)
 
 @app.route("/")
 @app.route("/index")
 def index():
     app.logger.debug("Main page entry")
+    if 'id' not in flask.session:    
+        flask.session['id'] = random.randint(1,21)*5
+
     return flask.render_template('calc.html')
 
 
@@ -66,22 +82,50 @@ def _calc_times():
     result = {"open": open_time, "close": close_time, "message": message}
     return flask.jsonify(result=result)
 
-@app.route('/result')
-def todo():
-    _items = db.tododb.find()
-    items = [item for item in _items]
+@app.route('/display')
+def display():
+    """
+    Display opening and closing times from
+    database.
+    """
+    app.logger.debug("Displaying times.")
 
-    return render_template('todo.html', items=items)
+    for entry in collection.find():
+        if entry['session_token'] == flask.session['id']:
+            flask.g.dist = entry['brevet_dist']
+            flask.g.kms = entry['km_list']
+            flask.g.open = entry['open_list']
+            flask.g.close = entry['close_list']
+
+    return flask.render_template("display.html")
 
 @app.route('/new', methods=['POST'])
 def new():
-    item_doc = {
-        'open': request.form['open'],
-        'close': request.form['close']
+    open_times = request.form.getlist("open")
+    close_times = request.form.getlist("close")
+    kms = request.form.getlist("km")
+    distance = request.form.get("distance")
+
+    if kms[0] == '':
+        flask.flash("Table is empty!")
+        return flask.redirect(flask.url_for("index"))
+
+    # app.logger.debug("PRINTING OPENS:", opens)
+    # app.logger.debug(opens)
+    record = {
+        'session_token': flask.session['id'],
+        'brevet_dist' : distance,
+        'km_list' : kms,
+        'open_list' : open_times,
+        'close_list' : close_times
     }
-    db.tododb.insert_one(item_doc)
-    # redirect to something else. 
-    return redirect(url_for('calc.html'))
+
+
+    collection.insert(record)
+
+    flask.flash("The controle times were saved.")
+    
+    return flask.redirect(flask.url_for("index"))
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
