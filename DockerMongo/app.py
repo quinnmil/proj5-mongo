@@ -92,6 +92,7 @@ def display():
 
     for entry in collection.find():
         if entry['session_token'] == flask.session['id']:
+            # needed if multiple users are accessing the page at the same time 
             flask.g.dist = entry['brevet_dist']
             flask.g.kms = entry['km_list']
             flask.g.open = entry['open_list']
