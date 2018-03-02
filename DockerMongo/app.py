@@ -14,29 +14,17 @@ import random
 app = Flask(__name__)
 app.secret_key = 'al;sdjf;wiejrtwkf'
 
-# client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
-# db = client.tododb
 
-# db.tododb.delete_many{}
-# From my mongoDB
-# Don't actually have to use. 
+client = MongoClient('db', 27017)
+db = client.tododb
+collection = db.control
 
-try:
-    client = MongoClient(os.environ['DB_PORT_27017_TCP_ADDR'], 27017)
-    db = client.tododb
-    collection = db.control
-
-except:
-    print("failure opening database. is mongo running? correct password?")
-    sys.exit(1)
+collection.delete_many({})
 
 @app.route("/")
 @app.route("/index")
 def index():
     app.logger.debug("Main page entry")
-    if 'id' not in flask.session:    
-        flask.session['id'] = random.randint(1,21)*5
-
     return flask.render_template('calc.html')
 
 
@@ -89,44 +77,48 @@ def display():
     database.
     """
     app.logger.debug("Displaying times.")
-
+    flask.g.kms = []
+    flask.g.open = []
+    flask.g.close = []
     for entry in collection.find():
-        if entry['session_token'] == flask.session['id']:
-            # needed if multiple users are accessing the page at the same time 
-            flask.g.dist = entry['brevet_dist']
-            flask.g.kms = entry['km_list']
-            flask.g.open = entry['open_list']
-            flask.g.close = entry['close_list']
+       
+        flask.g.kms.append(entry['km'])
+        flask.g.open.append(entry['open_time'])
+        flask.g.close.append(entry['close_time'])
 
     return flask.render_template("display.html")
 
-@app.route('/new', methods=['POST'])
+@app.route('/new', methods = ['POST'])
 def new():
     open_times = request.form.getlist("open")
     close_times = request.form.getlist("close")
     kms = request.form.getlist("km")
-    distance = request.form.get("distance")
 
-    if kms[0] == '':
+    if kms == []:
         flask.flash("Table is empty!")
         return flask.redirect(flask.url_for("index"))
 
     # app.logger.debug("PRINTING OPENS:", opens)
     # app.logger.debug(opens)
-    record = {
-        'session_token': flask.session['id'],
-        'brevet_dist' : distance,
-        'km_list' : kms,
-        'open_list' : open_times,
-        'close_list' : close_times
-    }
+    for item in range(20):
+        record = {
+        'open_time' : open_times[item],
+        'close_time' : close_times[item],
+        'km' : kms[item]
+        }
 
-
-    collection.insert(record)
+        collection.insert_one(record)
+    # record = {
+    #     'session_token': flask.session['id'],
+    #     'brevet_dist' : distance,
+    #     'km_list' : kms,
+    #     'open_list' : open_times,
+    #     'close_list' : close_times
 
     flask.flash("The controle times were saved.")
     
     return flask.redirect(flask.url_for("index"))
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=True, port=5000)
+    # added port number
